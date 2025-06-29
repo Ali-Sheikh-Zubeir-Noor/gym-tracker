@@ -30,70 +30,8 @@ const apiRequest = async (endpoint, options = {}) => {
     return await response.json();
   } catch (error) {
     console.error(`API request failed: ${endpoint}`, error);
-    
-    // In production, fall back to localStorage if backend is unavailable
-    if (import.meta.env.PROD) {
-      return handleOfflineMode(endpoint, options);
-    }
-    
     throw error;
   }
-};
-
-// Offline mode using localStorage for production deployment
-const handleOfflineMode = async (endpoint, options) => {
-  const { initializeStorage, getUsers, getUser, updateUser, getExercises, createExercise, updateExercise, deleteExercise, getWorkouts, createWorkout, updateWorkout, deleteWorkout } = await import('./localStorage.js');
-  
-  // Initialize storage on first use
-  initializeStorage();
-  
-  const method = options.method || 'GET';
-  const body = options.body ? JSON.parse(options.body) : null;
-  
-  // Route the request to appropriate localStorage function
-  if (endpoint.startsWith('/users')) {
-    if (method === 'GET') {
-      if (endpoint === '/users') {
-        return getUsers();
-      } else {
-        const id = endpoint.split('/')[2];
-        return getUser(id);
-      }
-    } else if (method === 'PUT') {
-      const id = endpoint.split('/')[2];
-      return updateUser(id, body);
-    }
-  } else if (endpoint.startsWith('/exercises')) {
-    if (method === 'GET') {
-      return getExercises();
-    } else if (method === 'POST') {
-      return createExercise(body);
-    } else if (method === 'PUT') {
-      const id = endpoint.split('/')[2];
-      return updateExercise(id, body);
-    } else if (method === 'DELETE') {
-      const id = endpoint.split('/')[2];
-      deleteExercise(id);
-      return { message: 'Exercise deleted successfully' };
-    }
-  } else if (endpoint.startsWith('/workouts')) {
-    if (method === 'GET') {
-      const urlParams = new URLSearchParams(endpoint.split('?')[1]);
-      const userId = urlParams.get('user_id');
-      return getWorkouts(userId);
-    } else if (method === 'POST') {
-      return createWorkout(body);
-    } else if (method === 'PUT') {
-      const id = endpoint.split('/')[2];
-      return updateWorkout(id, body);
-    } else if (method === 'DELETE') {
-      const id = endpoint.split('/')[2];
-      deleteWorkout(id);
-      return { message: 'Workout deleted successfully' };
-    }
-  }
-  
-  throw new Error('Endpoint not supported in offline mode');
 };
 
 // User API
