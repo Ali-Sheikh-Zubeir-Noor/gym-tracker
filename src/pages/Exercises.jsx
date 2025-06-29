@@ -1,6 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { Plus, Search, Filter, Dumbbell, Target, Edit, Trash2 } from 'lucide-react';
 import ExerciseForm from '../components/ExerciseForm';
+import LoadingSpinner from '../components/LoadingSpinner';
+import ErrorMessage from '../components/ErrorMessage';
+import { exerciseAPI } from '../utils/api';
 
 const Exercises = () => {
   const [exercises, setExercises] = useState([]);
@@ -9,6 +12,8 @@ const Exercises = () => {
   const [editingExercise, setEditingExercise] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('All');
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   const categories = ['All', 'Chest', 'Back', 'Legs', 'Shoulders', 'Arms', 'Core', 'Cardio'];
 
@@ -22,13 +27,15 @@ const Exercises = () => {
 
   const fetchExercises = async () => {
     try {
-      const response = await fetch('http://localhost:5000/api/exercises');
-      if (response.ok) {
-        const data = await response.json();
-        setExercises(data);
-      }
+      setLoading(true);
+      setError(null);
+      const data = await exerciseAPI.getAllExercises();
+      setExercises(data);
     } catch (error) {
       console.error('Error fetching exercises:', error);
+      setError('Failed to load exercises. Please check your connection.');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -51,57 +58,56 @@ const Exercises = () => {
 
   const handleCreateExercise = async (exerciseData) => {
     try {
-      const response = await fetch('http://localhost:5000/api/exercises', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(exerciseData),
-      });
-
-      if (response.ok) {
-        fetchExercises();
-        setShowForm(false);
-      }
+      await exerciseAPI.createExercise(exerciseData);
+      await fetchExercises();
+      setShowForm(false);
     } catch (error) {
       console.error('Error creating exercise:', error);
+      alert('Failed to create exercise. Please try again.');
     }
   };
 
   const handleUpdateExercise = async (exerciseId, exerciseData) => {
     try {
-      const response = await fetch(`http://localhost:5000/api/exercises/${exerciseId}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(exerciseData),
-      });
-
-      if (response.ok) {
-        fetchExercises();
-        setEditingExercise(null);
-      }
+      await exerciseAPI.updateExercise(exerciseId, exerciseData);
+      await fetchExercises();
+      setEditingExercise(null);
     } catch (error) {
       console.error('Error updating exercise:', error);
+      alert('Failed to update exercise. Please try again.');
     }
   };
 
   const handleDeleteExercise = async (exerciseId) => {
     if (window.confirm('Are you sure you want to delete this exercise?')) {
       try {
-        const response = await fetch(`http://localhost:5000/api/exercises/${exerciseId}`, {
-          method: 'DELETE',
-        });
-
-        if (response.ok) {
-          fetchExercises();
-        }
+        await exerciseAPI.deleteExercise(exerciseId);
+        await fetchExercises();
       } catch (error) {
         console.error('Error deleting exercise:', error);
+        alert('Failed to delete exercise. Please try again.');
       }
     }
   };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <LoadingSpinner size="lg" />
+        <span className="ml-4 text-white text-lg">Loading exercises...</span>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <ErrorMessage 
+        title="Error Loading Exercises"
+        message={error}
+        onRetry={fetchExercises}
+      />
+    );
+  }
 
   return (
     <div className="space-y-6">

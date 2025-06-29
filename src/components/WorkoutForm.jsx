@@ -1,5 +1,5 @@
 import React from 'react';
-import { Formik, Form, Field, FieldArray, ErrorMessage } from 'formik';
+import { Formik, Form, Field, FieldArray, ErrorMessage as FormikErrorMessage } from 'formik';
 import * as Yup from 'yup';
 import { Plus, Trash2, X } from 'lucide-react';
 
@@ -37,6 +37,7 @@ const WorkoutForm = ({ exercises, onSubmit, onCancel, initialValues = null }) =>
   const defaultValues = {
     name: '',
     notes: '',
+    date: new Date().toISOString().split('T')[0],
     exercises: [
       {
         exercise_id: '',
@@ -67,7 +68,19 @@ const WorkoutForm = ({ exercises, onSubmit, onCancel, initialValues = null }) =>
         initialValues={initialValues || defaultValues}
         validationSchema={validationSchema}
         onSubmit={(values, { setSubmitting }) => {
-          onSubmit(values);
+          // Map exercise data with exercise names for display
+          const workoutData = {
+            ...values,
+            exercises: values.exercises.map(ex => {
+              const exercise = exercises.find(e => e.id === parseInt(ex.exercise_id));
+              return {
+                ...ex,
+                name: exercise?.name || '',
+                exercise_id: parseInt(ex.exercise_id)
+              };
+            })
+          };
+          onSubmit(workoutData);
           setSubmitting(false);
         }}
       >
@@ -84,7 +97,19 @@ const WorkoutForm = ({ exercises, onSubmit, onCancel, initialValues = null }) =>
                 className="w-full bg-white/5 border border-white/20 rounded-lg px-4 py-3 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500"
                 placeholder="Enter workout name"
               />
-              <ErrorMessage name="name" component="div" className="text-red-400 text-sm mt-1" />
+              <FormikErrorMessage name="name" component="div" className="text-red-400 text-sm mt-1" />
+            </div>
+
+            {/* Date */}
+            <div>
+              <label className="block text-sm font-medium text-gray-300 mb-2">
+                Date
+              </label>
+              <Field
+                name="date"
+                type="date"
+                className="w-full bg-white/5 border border-white/20 rounded-lg px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+              />
             </div>
 
             {/* Notes */}
@@ -99,7 +124,7 @@ const WorkoutForm = ({ exercises, onSubmit, onCancel, initialValues = null }) =>
                 className="w-full bg-white/5 border border-white/20 rounded-lg px-4 py-3 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500"
                 placeholder="Add any notes about this workout..."
               />
-              <ErrorMessage name="notes" component="div" className="text-red-400 text-sm mt-1" />
+              <FormikErrorMessage name="notes" component="div" className="text-red-400 text-sm mt-1" />
             </div>
 
             {/* Exercises */}
@@ -142,7 +167,7 @@ const WorkoutForm = ({ exercises, onSubmit, onCancel, initialValues = null }) =>
                                 </option>
                               ))}
                             </Field>
-                            <ErrorMessage 
+                            <FormikErrorMessage 
                               name={`exercises.${index}.exercise_id`} 
                               component="div" 
                               className="text-red-400 text-sm mt-1" 
@@ -159,7 +184,7 @@ const WorkoutForm = ({ exercises, onSubmit, onCancel, initialValues = null }) =>
                               max="20"
                               className="w-full bg-white/5 border border-white/20 rounded-lg px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
                             />
-                            <ErrorMessage 
+                            <FormikErrorMessage 
                               name={`exercises.${index}.sets`} 
                               component="div" 
                               className="text-red-400 text-sm mt-1" 
@@ -176,7 +201,7 @@ const WorkoutForm = ({ exercises, onSubmit, onCancel, initialValues = null }) =>
                               max="100"
                               className="w-full bg-white/5 border border-white/20 rounded-lg px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
                             />
-                            <ErrorMessage 
+                            <FormikErrorMessage 
                               name={`exercises.${index}.reps`} 
                               component="div" 
                               className="text-red-400 text-sm mt-1" 
@@ -193,7 +218,7 @@ const WorkoutForm = ({ exercises, onSubmit, onCancel, initialValues = null }) =>
                               step="0.5"
                               className="w-full bg-white/5 border border-white/20 rounded-lg px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
                             />
-                            <ErrorMessage 
+                            <FormikErrorMessage 
                               name={`exercises.${index}.weight`} 
                               component="div" 
                               className="text-red-400 text-sm mt-1" 
@@ -210,7 +235,7 @@ const WorkoutForm = ({ exercises, onSubmit, onCancel, initialValues = null }) =>
                               max="600"
                               className="w-full bg-white/5 border border-white/20 rounded-lg px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
                             />
-                            <ErrorMessage 
+                            <FormikErrorMessage 
                               name={`exercises.${index}.rest_time`} 
                               component="div" 
                               className="text-red-400 text-sm mt-1" 
@@ -249,7 +274,7 @@ const WorkoutForm = ({ exercises, onSubmit, onCancel, initialValues = null }) =>
                   </div>
                 )}
               </FieldArray>
-              <ErrorMessage name="exercises" component="div" className="text-red-400 text-sm mt-1" />
+              <FormikErrorMessage name="exercises" component="div" className="text-red-400 text-sm mt-1" />
             </div>
 
             {/* Form Actions */}

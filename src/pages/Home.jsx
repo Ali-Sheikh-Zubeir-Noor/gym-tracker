@@ -1,5 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { Calendar, TrendingUp, Target, Award, Flame, Activity } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { Calendar, TrendingUp, Target, Award, Flame, Activity, Plus, BarChart3 } from 'lucide-react';
+import { userAPI, workoutAPI, exerciseAPI } from '../utils/api';
+import LoadingSpinner from '../components/LoadingSpinner';
+import ErrorMessage from '../components/ErrorMessage';
 
 const Home = () => {
   const [stats, setStats] = useState({
@@ -10,6 +14,8 @@ const Home = () => {
   });
   const [recentWorkouts, setRecentWorkouts] = useState([]);
   const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
     fetchDashboardData();
@@ -17,38 +23,42 @@ const Home = () => {
 
   const fetchDashboardData = async () => {
     try {
+      setLoading(true);
+      setError(null);
+
       // Fetch user data (assuming user ID 1 for demo)
-      const userResponse = await fetch('http://localhost:5000/api/users/1');
-      if (userResponse.ok) {
-        const userData = await userResponse.json();
-        setUser(userData);
-      }
+      const userData = await userAPI.getUser(1);
+      setUser(userData);
 
       // Fetch workouts
-      const workoutsResponse = await fetch('http://localhost:5000/api/workouts?user_id=1');
-      if (workoutsResponse.ok) {
-        const workoutsData = await workoutsResponse.json();
-        
-        // Calculate stats
-        const completed = workoutsData.filter(w => w.completed);
-        const thisWeek = workoutsData.filter(w => {
-          const workoutDate = new Date(w.date);
-          const weekAgo = new Date();
-          weekAgo.setDate(weekAgo.getDate() - 7);
-          return workoutDate >= weekAgo;
-        });
+      const workoutsData = await workoutAPI.getAllWorkouts(1);
+      
+      // Calculate stats
+      const completed = workoutsData.filter(w => w.completed);
+      const thisWeek = workoutsData.filter(w => {
+        const workoutDate = new Date(w.date);
+        const weekAgo = new Date();
+        weekAgo.setDate(weekAgo.getDate() - 7);
+        return workoutDate >= weekAgo;
+      });
 
-        setStats({
-          totalWorkouts: workoutsData.length,
-          completedWorkouts: completed.length,
-          thisWeekWorkouts: thisWeek.length,
-          totalExercises: workoutsData.reduce((total, w) => total + (w.exercises?.length || 0), 0)
-        });
+      setStats({
+        totalWorkouts: workoutsData.length,
+        completedWorkouts: completed.length,
+        thisWeekWorkouts: thisWeek.length,
+        totalExercises: workoutsData.reduce((total, w) => total + (w.exercises?.length || 0), 0)
+      });
 
-        setRecentWorkouts(workoutsData.slice(0, 5));
-      }
+      setRecentWorkouts(workoutsData.slice(0, 5));
+
+      // Fetch exercises count
+      const exercisesData = await exerciseAPI.getAllExercises();
+      setStats(prev => ({ ...prev, totalExercises: exercisesData.length }));
     } catch (error) {
       console.error('Error fetching dashboard data:', error);
+      setError('Failed to load dashboard data. Please try again.');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -78,6 +88,25 @@ const Home = () => {
       color: 'from-purple-500 to-pink-500'
     }
   ];
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <LoadingSpinner size="lg" />
+        <span className="ml-4 text-white text-lg">Loading dashboard...</span>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <ErrorMessage 
+        title="Error Loading Dashboard"
+        message={error}
+        onRetry={fetchDashboardData}
+      />
+    );
+  }
 
   return (
     <div className="space-y-8">
@@ -163,17 +192,23 @@ const Home = () => {
         <div className="bg-white/10 backdrop-blur-lg rounded-xl p-6 border border-white/20">
           <h3 className="text-lg font-semibold text-white mb-4">Quick Start</h3>
           <p className="text-gray-300 mb-4">Ready to work out? Start a new session now.</p>
-          <button className="bg-gradient-to-r from-purple-500 to-pink-500 text-white px-6 py-3 rounded-lg hover:shadow-lg transition-all duration-200 w-full">
+          <Link 
+            to="/workouts"
+            className="bg-gradient-to-r from-purple-500 to-pink-500 text-white px-6 py-3 rounded-lg hover:shadow-lg transition-all duration-200 w-full inline-block text-center"
+          >
             Start New Workout
-          </button>
+          </Link>
         </div>
 
         <div className="bg-white/10 backdrop-blur-lg rounded-xl p-6 border border-white/20">
           <h3 className="text-lg font-semibold text-white mb-4">Progress Tracking</h3>
           <p className="text-gray-300 mb-4">View your fitness journey and achievements.</p>
-          <button className="bg-gradient-to-r from-blue-500 to-cyan-500 text-white px-6 py-3 rounded-lg hover:shadow-lg transition-all duration-200 w-full">
+          <Link 
+            to="/progress"
+            className="bg-gradient-to-r from-blue-500 to-cyan-500 text-white px-6 py-3 rounded-lg hover:shadow-lg transition-all duration-200 w-full inline-block text-center"
+          >
             View Progress
-          </button>
+          </Link>
         </div>
       </div>
     </div>

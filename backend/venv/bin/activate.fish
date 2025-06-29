@@ -29,7 +29,7 @@ end
 # unset irrelevant variables
 deactivate nondestructive
 
-set -gx VIRTUAL_ENV "/home/ali/Desktop/phase-4/gym-tracker/venv"
+set -gx VIRTUAL_ENV "/home/ali/Desktop/gym-tracker/backend/venv"
 
 set -gx _OLD_VIRTUAL_PATH $PATH
 set -gx PATH "$VIRTUAL_ENV/bin" $PATH

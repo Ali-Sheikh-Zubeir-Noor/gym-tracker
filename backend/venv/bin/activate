@@ -37,7 +37,7 @@ deactivate () {
 # unset irrelevant variables
 deactivate nondestructive
 
-VIRTUAL_ENV="/home/ali/Desktop/phase-4/gym-tracker/venv"
+VIRTUAL_ENV="/home/ali/Desktop/gym-tracker/backend/venv"
 export VIRTUAL_ENV
 
 _OLD_VIRTUAL_PATH="$PATH"

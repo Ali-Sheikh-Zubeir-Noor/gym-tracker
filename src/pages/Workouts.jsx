@@ -1,6 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { Plus, Play, Trash2, Check, Calendar, Clock } from 'lucide-react';
 import WorkoutForm from '../components/WorkoutForm';
+import LoadingSpinner from '../components/LoadingSpinner';
+import ErrorMessage from '../components/ErrorMessage';
+import { workoutAPI, exerciseAPI } from '../utils/api';
 
 const Workouts = () => {
   const [workouts, setWorkouts] = useState([]);
@@ -8,88 +11,65 @@ const Workouts = () => {
   const [showForm, setShowForm] = useState(false);
   const [editingWorkout, setEditingWorkout] = useState(null);
   const [activeWorkout, setActiveWorkout] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
-    fetchWorkouts();
-    fetchExercises();
+    fetchData();
   }, []);
 
-  const fetchWorkouts = async () => {
+  const fetchData = async () => {
     try {
-      const response = await fetch('http://localhost:5000/api/workouts?user_id=1');
-      if (response.ok) {
-        const data = await response.json();
-        setWorkouts(data);
-      }
+      setLoading(true);
+      setError(null);
+      
+      const [workoutsData, exercisesData] = await Promise.all([
+        workoutAPI.getAllWorkouts(1), // Assuming user ID 1
+        exerciseAPI.getAllExercises()
+      ]);
+      
+      setWorkouts(workoutsData);
+      setExercises(exercisesData);
     } catch (error) {
-      console.error('Error fetching workouts:', error);
-    }
-  };
-
-  const fetchExercises = async () => {
-    try {
-      const response = await fetch('http://localhost:5000/api/exercises');
-      if (response.ok) {
-        const data = await response.json();
-        setExercises(data);
-      }
-    } catch (error) {
-      console.error('Error fetching exercises:', error);
+      console.error('Error fetching data:', error);
+      setError('Failed to load workouts and exercises. Please check your connection.');
+    } finally {
+      setLoading(false);
     }
   };
 
   const handleCreateWorkout = async (workoutData) => {
     try {
-      const response = await fetch('http://localhost:5000/api/workouts', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ ...workoutData, user_id: 1 }),
-      });
-
-      if (response.ok) {
-        fetchWorkouts();
-        setShowForm(false);
-      }
+      await workoutAPI.createWorkout({ ...workoutData, user_id: 1 });
+      await fetchData();
+      setShowForm(false);
     } catch (error) {
       console.error('Error creating workout:', error);
+      alert('Failed to create workout. Please try again.');
     }
   };
 
   const handleUpdateWorkout = async (workoutId, updates) => {
     try {
-      const response = await fetch(`http://localhost:5000/api/workouts/${workoutId}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(updates),
-      });
-
-      if (response.ok) {
-        fetchWorkouts();
-        if (updates.completed) {
-          setActiveWorkout(null);
-        }
+      await workoutAPI.updateWorkout(workoutId, updates);
+      await fetchData();
+      if (updates.completed) {
+        setActiveWorkout(null);
       }
     } catch (error) {
       console.error('Error updating workout:', error);
+      alert('Failed to update workout. Please try again.');
     }
   };
 
   const handleDeleteWorkout = async (workoutId) => {
     if (window.confirm('Are you sure you want to delete this workout?')) {
       try {
-        const response = await fetch(`http://localhost:5000/api/workouts/${workoutId}`, {
-          method: 'DELETE',
-        });
-
-        if (response.ok) {
-          fetchWorkouts();
-        }
+        await workoutAPI.deleteWorkout(workoutId);
+        await fetchData();
       } catch (error) {
         console.error('Error deleting workout:', error);
+        alert('Failed to delete workout. Please try again.');
       }
     }
   };
@@ -105,6 +85,25 @@ const Workouts = () => {
       duration: 60 // Default duration in minutes
     });
   };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <LoadingSpinner size="lg" />
+        <span className="ml-4 text-white text-lg">Loading workouts...</span>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <ErrorMessage 
+        title="Error Loading Workouts"
+        message={error}
+        onRetry={fetchData}
+      />
+    );
+  }
 
   return (
     <div className="space-y-6">

@@ -1,11 +1,16 @@
 import React, { useState, useEffect } from 'react';
-import { Formik, Form, Field, ErrorMessage } from 'formik';
+import { Formik, Form, Field, ErrorMessage as FormikErrorMessage } from 'formik';
 import * as Yup from 'yup';
 import { User, Edit, Save, X, Target, Calendar, Weight, Ruler } from 'lucide-react';
+import LoadingSpinner from '../components/LoadingSpinner';
+import ErrorMessage from '../components/ErrorMessage';
+import { userAPI } from '../utils/api';
 
 const Profile = () => {
   const [user, setUser] = useState(null);
   const [isEditing, setIsEditing] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
     fetchUser();
@@ -13,13 +18,15 @@ const Profile = () => {
 
   const fetchUser = async () => {
     try {
-      const response = await fetch('http://localhost:5000/api/users/1');
-      if (response.ok) {
-        const userData = await response.json();
-        setUser(userData);
-      }
+      setLoading(true);
+      setError(null);
+      const userData = await userAPI.getUser(1); // Assuming user ID 1
+      setUser(userData);
     } catch (error) {
       console.error('Error fetching user:', error);
+      setError('Failed to load profile. Please check your connection.');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -58,20 +65,12 @@ const Profile = () => {
 
   const handleUpdateProfile = async (values) => {
     try {
-      const response = await fetch(`http://localhost:5000/api/users/${user.id}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(values),
-      });
-
-      if (response.ok) {
-        setUser(values);
-        setIsEditing(false);
-      }
+      await userAPI.updateUser(user.id, values);
+      setUser(values);
+      setIsEditing(false);
     } catch (error) {
       console.error('Error updating profile:', error);
+      alert('Failed to update profile. Please try again.');
     }
   };
 
@@ -104,11 +103,32 @@ const Profile = () => {
     };
   };
 
-  if (!user) {
+  if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
-        <div className="text-white text-lg">Loading profile...</div>
+        <LoadingSpinner size="lg" />
+        <span className="ml-4 text-white text-lg">Loading profile...</span>
       </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <ErrorMessage 
+        title="Error Loading Profile"
+        message={error}
+        onRetry={fetchUser}
+      />
+    );
+  }
+
+  if (!user) {
+    return (
+      <ErrorMessage 
+        title="Profile Not Found"
+        message="Unable to load user profile data."
+        onRetry={fetchUser}
+      />
     );
   }
 
@@ -168,7 +188,7 @@ const Profile = () => {
                       type="text"
                       className="w-full bg-white/5 border border-white/20 rounded-lg px-4 py-3 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500"
                     />
-                    <ErrorMessage name="name" component="div" className="text-red-400 text-sm mt-1" />
+                    <FormikErrorMessage name="name" component="div" className="text-red-400 text-sm mt-1" />
                   </div>
 
                   {/* Email */}
@@ -181,7 +201,7 @@ const Profile = () => {
                       type="email"
                       className="w-full bg-white/5 border border-white/20 rounded-lg px-4 py-3 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500"
                     />
-                    <ErrorMessage name="email" component="div" className="text-red-400 text-sm mt-1" />
+                    <FormikErrorMessage name="email" component="div" className="text-red-400 text-sm mt-1" />
                   </div>
 
                   {/* Age */}
@@ -196,7 +216,7 @@ const Profile = () => {
                       max="120"
                       className="w-full bg-white/5 border border-white/20 rounded-lg px-4 py-3 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500"
                     />
-                    <ErrorMessage name="age" component="div" className="text-red-400 text-sm mt-1" />
+                    <FormikErrorMessage name="age" component="div" className="text-red-400 text-sm mt-1" />
                   </div>
 
                   {/* Weight */}
@@ -212,7 +232,7 @@ const Profile = () => {
                       step="0.1"
                       className="w-full bg-white/5 border border-white/20 rounded-lg px-4 py-3 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500"
                     />
-                    <ErrorMessage name="weight" component="div" className="text-red-400 text-sm mt-1" />
+                    <FormikErrorMessage name="weight" component="div" className="text-red-400 text-sm mt-1" />
                   </div>
 
                   {/* Height */}
@@ -227,7 +247,7 @@ const Profile = () => {
                       max="250"
                       className="w-full bg-white/5 border border-white/20 rounded-lg px-4 py-3 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500"
                     />
-                    <ErrorMessage name="height" component="div" className="text-red-400 text-sm mt-1" />
+                    <FormikErrorMessage name="height" component="div" className="text-red-400 text-sm mt-1" />
                   </div>
 
                   {/* Goal */}
@@ -246,7 +266,7 @@ const Profile = () => {
                         </option>
                       ))}
                     </Field>
-                    <ErrorMessage name="goal" component="div" className="text-red-400 text-sm mt-1" />
+                    <FormikErrorMessage name="goal" component="div" className="text-red-400 text-sm mt-1" />
                   </div>
                 </div>
 

@@ -1,64 +1,60 @@
 import React from 'react';
-import { Formik, Form, Field, FieldArray, ErrorMessage } from 'formik';
+import { Formik, Form, Field, FieldArray, ErrorMessage as FormikErrorMessage } from 'formik';
 import * as Yup from 'yup';
-import { X, Plus, Trash2 } from 'lucide-react';
+import { Plus, Trash2, X } from 'lucide-react';
 
-const ExerciseForm = ({ initialValues = null, onSubmit, onCancel }) => {
-  const categories = ['Chest', 'Back', 'Legs', 'Shoulders', 'Arms', 'Core', 'Cardio'];
-  const muscleGroupOptions = [
-    'Chest', 'Back', 'Shoulders', 'Biceps', 'Triceps', 'Forearms',
-    'Quadriceps', 'Hamstrings', 'Glutes', 'Calves', 'Abs', 'Obliques',
-    'Lats', 'Traps', 'Rhomboids', 'Deltoids'
-  ];
-
+const WorkoutForm = ({ exercises, onSubmit, onCancel, initialValues = null }) => {
   const validationSchema = Yup.object({
     name: Yup.string()
-      .required('Exercise name is required')
+      .required('Workout name is required')
       .min(2, 'Name must be at least 2 characters')
-      .max(100, 'Name must be less than 100 characters'),
-    category: Yup.string()
-      .required('Category is required')
-      .oneOf(categories, 'Please select a valid category'),
-    muscle_groups: Yup.array()
-      .of(Yup.string())
-      .min(1, 'At least one muscle group is required'),
-    equipment: Yup.string()
-      .max(50, 'Equipment must be less than 50 characters'),
-    instructions: Yup.string()
-      .max(500, 'Instructions must be less than 500 characters')
+      .max(50, 'Name must be less than 50 characters'),
+    notes: Yup.string()
+      .max(200, 'Notes must be less than 200 characters'),
+    exercises: Yup.array()
+      .of(
+        Yup.object({
+          exercise_id: Yup.number().required('Exercise is required'),
+          sets: Yup.number()
+            .required('Sets are required')
+            .min(1, 'Must have at least 1 set')
+            .max(20, 'Cannot exceed 20 sets'),
+          reps: Yup.number()
+            .required('Reps are required')
+            .min(1, 'Must have at least 1 rep')
+            .max(100, 'Cannot exceed 100 reps'),
+          weight: Yup.number()
+            .min(0, 'Weight cannot be negative')
+            .max(1000, 'Weight cannot exceed 1000kg'),
+          rest_time: Yup.number()
+            .min(0, 'Rest time cannot be negative')
+            .max(600, 'Rest time cannot exceed 10 minutes')
+        })
+      )
+      .min(1, 'At least one exercise is required')
   });
 
   const defaultValues = {
     name: '',
-    category: '',
-    muscle_groups: [],
-    equipment: '',
-    instructions: ''
-  };
-
-  // Parse muscle groups if editing
-  const getInitialValues = () => {
-    if (initialValues) {
-      let muscleGroups = [];
-      try {
-        muscleGroups = JSON.parse(initialValues.muscle_groups || '[]');
-      } catch (e) {
-        muscleGroups = [];
+    notes: '',
+    date: new Date().toISOString().split('T')[0],
+    exercises: [
+      {
+        exercise_id: '',
+        sets: 3,
+        reps: 10,
+        weight: 0,
+        rest_time: 60,
+        notes: ''
       }
-      
-      return {
-        ...initialValues,
-        muscle_groups: muscleGroups
-      };
-    }
-    return defaultValues;
+    ]
   };
 
   return (
     <div className="bg-white/10 backdrop-blur-lg rounded-xl p-6 border border-white/20">
       <div className="flex items-center justify-between mb-6">
         <h2 className="text-xl font-semibold text-white">
-          {initialValues ? 'Edit Exercise' : 'Add New Exercise'}
+          {initialValues ? 'Edit Workout' : 'Create New Workout'}
         </h2>
         <button
           onClick={onCancel}
@@ -69,127 +65,216 @@ const ExerciseForm = ({ initialValues = null, onSubmit, onCancel }) => {
       </div>
 
       <Formik
-        initialValues={getInitialValues()}
+        initialValues={initialValues || defaultValues}
         validationSchema={validationSchema}
         onSubmit={(values, { setSubmitting }) => {
-          onSubmit(values);
+          // Map exercise data with exercise names for display
+          const workoutData = {
+            ...values,
+            exercises: values.exercises.map(ex => {
+              const exercise = exercises.find(e => e.id === parseInt(ex.exercise_id));
+              return {
+                ...ex,
+                name: exercise?.name || '',
+                exercise_id: parseInt(ex.exercise_id)
+              };
+            })
+          };
+          onSubmit(workoutData);
           setSubmitting(false);
         }}
       >
-        {({ values, setFieldValue, isSubmitting }) => (
+        {({ values, isSubmitting }) => (
           <Form className="space-y-6">
-            {/* Exercise Name */}
+            {/* Workout Name */}
             <div>
               <label className="block text-sm font-medium text-gray-300 mb-2">
-                Exercise Name *
+                Workout Name *
               </label>
               <Field
                 name="name"
                 type="text"
                 className="w-full bg-white/5 border border-white/20 rounded-lg px-4 py-3 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500"
-                placeholder="Enter exercise name"
+                placeholder="Enter workout name"
               />
-              <ErrorMessage name="name" component="div" className="text-red-400 text-sm mt-1" />
+              <FormikErrorMessage name="name" component="div" className="text-red-400 text-sm mt-1" />
             </div>
 
-            {/* Category */}
+            {/* Date */}
             <div>
               <label className="block text-sm font-medium text-gray-300 mb-2">
-                Category *
+                Date
               </label>
               <Field
-                name="category"
-                as="select"
+                name="date"
+                type="date"
                 className="w-full bg-white/5 border border-white/20 rounded-lg px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
-              >
-                <option value="" className="bg-gray-800">Select category</option>
-                {categories.map(category => (
-                  <option key={category} value={category} className="bg-gray-800">
-                    {category}
-                  </option>
-                ))}
-              </Field>
-              <ErrorMessage name="category" component="div" className="text-red-400 text-sm mt-1" />
-            </div>
-
-            {/* Muscle Groups */}
-            <div>
-              <label className="block text-sm font-medium text-gray-300 mb-2">
-                Muscle Groups *
-              </label>
-              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 max-h-48 overflow-y-auto bg-white/5 rounded-lg p-4 border border-white/20">
-                {muscleGroupOptions.map(muscleGroup => (
-                  <label key={muscleGroup} className="flex items-center space-x-2 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={values.muscle_groups.includes(muscleGroup)}
-                      onChange={(e) => {
-                        if (e.target.checked) {
-                          setFieldValue('muscle_groups', [...values.muscle_groups, muscleGroup]);
-                        } else {
-                          setFieldValue('muscle_groups', values.muscle_groups.filter(mg => mg !== muscleGroup));
-                        }
-                      }}
-                      className="rounded border-white/20 bg-white/5 text-purple-500 focus:ring-purple-500"
-                    />
-                    <span className="text-sm text-gray-300">{muscleGroup}</span>
-                  </label>
-                ))}
-              </div>
-              <ErrorMessage name="muscle_groups" component="div" className="text-red-400 text-sm mt-1" />
-              
-              {/* Selected muscle groups display */}
-              {values.muscle_groups.length > 0 && (
-                <div className="mt-2">
-                  <p className="text-sm text-gray-400 mb-2">Selected:</p>
-                  <div className="flex flex-wrap gap-2">
-                    {values.muscle_groups.map(muscle => (
-                      <span
-                        key={muscle}
-                        className="bg-purple-500/20 text-purple-300 px-2 py-1 rounded-full text-xs flex items-center space-x-1"
-                      >
-                        <span>{muscle}</span>
-                        <button
-                          type="button"
-                          onClick={() => setFieldValue('muscle_groups', values.muscle_groups.filter(mg => mg !== muscle))}
-                          className="hover:text-purple-100"
-                        >
-                          <X className="h-3 w-3" />
-                        </button>
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* Equipment */}
-            <div>
-              <label className="block text-sm font-medium text-gray-300 mb-2">
-                Equipment
-              </label>
-              <Field
-                name="equipment"
-                type="text"
-                className="w-full bg-white/5 border border-white/20 rounded-lg px-4 py-3 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500"
-                placeholder="e.g., Barbell, Dumbbells, Bodyweight"
               />
-              <ErrorMessage name="equipment" component="div" className="text-red-400 text-sm mt-1" />
             </div>
 
-            {/* Instructions */}
+            {/* Notes */}
             <div>
               <label className="block text-sm font-medium text-gray-300 mb-2">
-                Instructions
+                Notes
               </label>
               <Field
-                name="instructions"
+                name="notes"
                 as="textarea"
-                rows="4"
+                rows="3"
                 className="w-full bg-white/5 border border-white/20 rounded-lg px-4 py-3 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500"
-                placeholder="Describe how to perform this exercise..."
+                placeholder="Add any notes about this workout..."
               />
-              <ErrorMessage name="instructions" component="div" className="text-red-400 text-sm mt-1" />
+              <FormikErrorMessage name="notes" component="div" className="text-red-400 text-sm mt-1" />
+            </div>
+
+            {/* Exercises */}
+            <div>
+              <label className="block text-sm font-medium text-gray-300 mb-4">
+                Exercises *
+              </label>
+              
+              <FieldArray name="exercises">
+                {({ push, remove }) => (
+                  <div className="space-y-4">
+                    {values.exercises.map((exercise, index) => (
+                      <div key={index} className="bg-white/5 rounded-lg p-4 border border-white/10">
+                        <div className="flex items-center justify-between mb-4">
+                          <h4 className="font-medium text-white">Exercise {index + 1}</h4>
+                          {values.exercises.length > 1 && (
+                            <button
+                              type="button"
+                              onClick={() => remove(index)}
+                              className="text-red-400 hover:text-red-300 transition-colors"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </button>
+                          )}
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                          {/* Exercise Selection */}
+                          <div className="md:col-span-2 lg:col-span-3">
+                            <label className="block text-sm text-gray-400 mb-1">Exercise *</label>
+                            <Field
+                              name={`exercises.${index}.exercise_id`}
+                              as="select"
+                              className="w-full bg-white/5 border border-white/20 rounded-lg px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+                            >
+                              <option value="">Select an exercise</option>
+                              {exercises.map((ex) => (
+                                <option key={ex.id} value={ex.id} className="bg-gray-800">
+                                  {ex.name} ({ex.category})
+                                </option>
+                              ))}
+                            </Field>
+                            <FormikErrorMessage 
+                              name={`exercises.${index}.exercise_id`} 
+                              component="div" 
+                              className="text-red-400 text-sm mt-1" 
+                            />
+                          </div>
+
+                          {/* Sets */}
+                          <div>
+                            <label className="block text-sm text-gray-400 mb-1">Sets *</label>
+                            <Field
+                              name={`exercises.${index}.sets`}
+                              type="number"
+                              min="1"
+                              max="20"
+                              className="w-full bg-white/5 border border-white/20 rounded-lg px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+                            />
+                            <FormikErrorMessage 
+                              name={`exercises.${index}.sets`} 
+                              component="div" 
+                              className="text-red-400 text-sm mt-1" 
+                            />
+                          </div>
+
+                          {/* Reps */}
+                          <div>
+                            <label className="block text-sm text-gray-400 mb-1">Reps *</label>
+                            <Field
+                              name={`exercises.${index}.reps`}
+                              type="number"
+                              min="1"
+                              max="100"
+                              className="w-full bg-white/5 border border-white/20 rounded-lg px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+                            />
+                            <FormikErrorMessage 
+                              name={`exercises.${index}.reps`} 
+                              component="div" 
+                              className="text-red-400 text-sm mt-1" 
+                            />
+                          </div>
+
+                          {/* Weight */}
+                          <div>
+                            <label className="block text-sm text-gray-400 mb-1">Weight (kg)</label>
+                            <Field
+                              name={`exercises.${index}.weight`}
+                              type="number"
+                              min="0"
+                              step="0.5"
+                              className="w-full bg-white/5 border border-white/20 rounded-lg px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+                            />
+                            <FormikErrorMessage 
+                              name={`exercises.${index}.weight`} 
+                              component="div" 
+                              className="text-red-400 text-sm mt-1" 
+                            />
+                          </div>
+
+                          {/* Rest Time */}
+                          <div>
+                            <label className="block text-sm text-gray-400 mb-1">Rest (seconds)</label>
+                            <Field
+                              name={`exercises.${index}.rest_time`}
+                              type="number"
+                              min="0"
+                              max="600"
+                              className="w-full bg-white/5 border border-white/20 rounded-lg px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+                            />
+                            <FormikErrorMessage 
+                              name={`exercises.${index}.rest_time`} 
+                              component="div" 
+                              className="text-red-400 text-sm mt-1" 
+                            />
+                          </div>
+
+                          {/* Exercise Notes */}
+                          <div className="md:col-span-2">
+                            <label className="block text-sm text-gray-400 mb-1">Notes</label>
+                            <Field
+                              name={`exercises.${index}.notes`}
+                              type="text"
+                              className="w-full bg-white/5 border border-white/20 rounded-lg px-3 py-2 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                              placeholder="Exercise-specific notes..."
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+
+                    <button
+                      type="button"
+                      onClick={() => push({
+                        exercise_id: '',
+                        sets: 3,
+                        reps: 10,
+                        weight: 0,
+                        rest_time: 60,
+                        notes: ''
+                      })}
+                      className="w-full bg-white/5 border border-white/20 border-dashed rounded-lg p-4 text-gray-300 hover:bg-white/10 hover:text-white transition-all duration-200 flex items-center justify-center space-x-2"
+                    >
+                      <Plus className="h-4 w-4" />
+                      <span>Add Exercise</span>
+                    </button>
+                  </div>
+                )}
+              </FieldArray>
+              <FormikErrorMessage name="exercises" component="div" className="text-red-400 text-sm mt-1" />
             </div>
 
             {/* Form Actions */}
@@ -199,10 +284,7 @@ const ExerciseForm = ({ initialValues = null, onSubmit, onCancel }) => {
                 disabled={isSubmitting}
                 className="flex-1 bg-gradient-to-r from-green-500 to-emerald-500 text-white px-6 py-3 rounded-lg hover:shadow-lg transition-all duration-200 disabled:opacity-50"
               >
-                {isSubmitting 
-                  ? (initialValues ? 'Updating...' : 'Creating...') 
-                  : (initialValues ? 'Update Exercise' : 'Create Exercise')
-                }
+                {isSubmitting ? 'Creating...' : 'Create Workout'}
               </button>
               <button
                 type="button"
@@ -219,4 +301,4 @@ const ExerciseForm = ({ initialValues = null, onSubmit, onCancel }) => {
   );
 };
 
-export default ExerciseForm;
+export default WorkoutForm;
